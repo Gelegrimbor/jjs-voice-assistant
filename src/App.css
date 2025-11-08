@@ -12,47 +12,51 @@ body {
 
 .App {
   min-height: 100vh;
+  height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
+  overflow: hidden;
 }
 
 .content-wrapper {
   width: 100%;
   max-width: 700px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-height: 95vh;
 }
 
 .header {
   text-align: center;
   color: white;
-  margin-bottom: 30px;
-  padding: 20px 0;
-  max-width: 700px;
+  margin-bottom: 15px;
+  padding: 10px 0;
 }
 
 .header h1 {
-  font-size: 2.5rem;
-  margin-bottom: 10px;
+  font-size: 2rem;
+  margin-bottom: 5px;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .header p {
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   opacity: 0.9;
 }
 
 .chat-container {
   background: white;
   border-radius: 20px;
-  padding: 25px;
-  margin-bottom: 20px;
+  padding: 20px;
+  margin-bottom: 15px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-  min-height: 400px;
-  max-height: 500px;
+  flex: 1;
   overflow-y: auto;
   position: relative;
-  max-width: 700px;
+  min-height: 0;
 }
 
 .chat-container::-webkit-scrollbar {
@@ -200,16 +204,14 @@ body {
 .input-container {
   background: white;
   border-radius: 15px;
-  padding: 20px;
+  padding: 15px;
   box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
-  margin-bottom: 20px;
-  max-width: 700px;
 }
 
 .input-row {
   display: flex;
   gap: 10px;
-  margin-bottom: 15px;
+  margin-bottom: 10px;
 }
 
 .text-input {
@@ -265,8 +267,8 @@ body {
 }
 
 .voice-button {
-  padding: 20px 50px;
-  font-size: 20px;
+  padding: 15px 40px;
+  font-size: 18px;
   font-weight: 600;
   background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
   color: white;
@@ -354,12 +356,12 @@ body {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
   border-radius: 20px;
-  padding: 25px;
-  margin-bottom: 20px;
+  padding: 15px 20px;
+  margin-bottom: 15px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   display: grid;
   grid-template-columns: 1fr 1fr auto;
-  gap: 20px;
+  gap: 15px;
   align-items: end;
   border: 1px solid rgba(255, 255, 255, 0.3);
 }

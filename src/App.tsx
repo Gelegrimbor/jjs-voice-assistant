@@ -32,22 +32,20 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [selectedVoice, setSelectedVoice] = useState('pNInz6obpgDQGcFmaJgB'); // Default: Adam
-  const [volume, setVolume] = useState(1.0); // Default: 100%
+  const [selectedVoice, setSelectedVoice] = useState('pNInz6obpgDQGcFmaJgB');
+  const [volume, setVolume] = useState(1.0);
   const recognitionRef = useRef<any>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
-  // Available voices from ElevenLabs
   const voices: Voice[] = [
-    { id: 'pNInz6obpgDQGcFmaJgB', name: 'Adam (Male)' },
-    { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Rachel (Female)' },
-    { id: 'IKne3meq5aSn9XLyUdCD', name: 'Charlie (Male)' },
-    { id: 'XB0fDUnXU5powFXDhCwa', name: 'Charlotte (Female)' },
-    { id: 'cgSgspJ2msm6clMCkdW9', name: 'Jessica (Female)' },
-    { id: 'iP95p4xoKVk53GoZ742B', name: 'Chris (Male)' },
+    { id: 'pNInz6obpgDQGcFmaJgB', name: 'Adam - Male Voice' },
+    { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Rachel - Female Voice' },
+    { id: 'IKne3meq5aSn9XLyUdCD', name: 'Charlie - Male Voice' },
+    { id: 'XB0fDUnXU5powFXDhCwa', name: 'Charlotte - Female Voice' },
+    { id: 'cgSgspJ2msm6clMCkdW9', name: 'Jessica - Female Voice' },
+    { id: 'iP95p4xoKVk53GoZ742B', name: 'Chris - Male Voice' },
   ];
 
-  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
@@ -58,7 +56,7 @@ function App() {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
-      alert('Your browser does not support speech recognition. Please use Chrome!');
+      alert('Speech recognition is not supported in this browser. Please use Google Chrome.');
       return;
     }
 
@@ -123,7 +121,7 @@ function App() {
 
     } catch (error) {
       console.error('Claude API Error:', error);
-      alert('Failed to get AI response. Check your API key and console.');
+      alert('Failed to get AI response. Please check your API key and internet connection.');
     } finally {
       setIsLoading(false);
     }
@@ -156,13 +154,13 @@ function App() {
       );
 
       if (!response.ok) {
-        throw new Error(`TTS API returned ${response.status}`);
+        throw new Error(`Text-to-Speech API returned ${response.status}`);
       }
 
       const audioBlob = await response.blob();
       const audioUrl = URL.createObjectURL(audioBlob);
       const audio = new Audio(audioUrl);
-      audio.volume = volume; // Set volume
+      audio.volume = volume;
 
       audio.onended = () => setIsSpeaking(false);
       await audio.play();
@@ -174,7 +172,7 @@ function App() {
   };
 
   const clearConversation = () => {
-    if (conversation.length > 0 && window.confirm('Are you sure you want to clear the conversation?')) {
+    if (conversation.length > 0 && window.confirm('Clear all conversation history?')) {
       setConversation([]);
     }
   };
@@ -187,23 +185,22 @@ function App() {
   };
 
   const getVoiceButtonText = () => {
-    if (isListening) return '🎤 Listening...';
-    if (isSpeaking) return '🔊 Speaking...';
-    return '🎤 Talk to AI';
+    if (isListening) return 'Listening...';
+    if (isSpeaking) return 'Speaking...';
+    return 'Start Voice Input';
   };
 
   return (
     <div className="App">
       <div className="content-wrapper">
         <div className="header">
-          <h1>🤖 AI Voice Assistant</h1>
+          <h1>AI Voice Assistant</h1>
           <p>Powered by Claude AI & ElevenLabs</p>
         </div>
 
-        {/* Settings Panel */}
         <div className="settings-panel">
           <div className="setting-group">
-            <label htmlFor="voice-select">🎙️ Voice:</label>
+            <label htmlFor="voice-select">Voice Selection</label>
             <select
               id="voice-select"
               className="voice-select"
@@ -220,7 +217,7 @@ function App() {
           </div>
 
           <div className="setting-group">
-            <label htmlFor="volume-slider">🔊 Volume: {Math.round(volume * 100)}%</label>
+            <label htmlFor="volume-slider">Volume: {Math.round(volume * 100)}%</label>
             <input
               id="volume-slider"
               type="range"
@@ -239,7 +236,7 @@ function App() {
             onClick={clearConversation}
             disabled={conversation.length === 0 || isLoading || isListening || isSpeaking}
           >
-            🗑️ Clear Chat
+            Clear Conversation
           </button>
         </div>
 
@@ -248,10 +245,10 @@ function App() {
             <div className="empty-state">
               <div className="empty-state-icon">💬</div>
               <p style={{ fontSize: '1.2rem', marginBottom: '10px' }}>
-                Start a conversation!
+                Start a Conversation
               </p>
               <p style={{ fontSize: '0.9rem' }}>
-                Click the microphone button or type a message
+                Use voice input or type your message below
               </p>
             </div>
           ) : (
@@ -259,7 +256,7 @@ function App() {
               <div key={index} className={`message ${msg.role}`}>
                 <div className="message-bubble">
                   <span className="message-label">
-                    {msg.role === 'user' ? 'You' : 'AI Assistant'}
+                    {msg.role === 'user' ? 'You' : 'Assistant'}
                   </span>
                   <div className="message-content">{msg.content}</div>
                 </div>
@@ -269,7 +266,7 @@ function App() {
           {isLoading && (
             <div className="loading-indicator">
               <div className="loading-dots">
-                AI is thinking<span>.</span><span>.</span><span>.</span>
+                Processing<span>.</span><span>.</span><span>.</span>
               </div>
             </div>
           )}
@@ -283,7 +280,7 @@ function App() {
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-              placeholder="Type a message or use voice..."
+              placeholder="Type your message here..."
               disabled={isLoading || isListening}
             />
             <button
@@ -291,7 +288,7 @@ function App() {
               onClick={() => handleSendMessage()}
               disabled={isLoading || isListening || !inputText.trim()}
             >
-              Send ✈️
+              Send
             </button>
           </div>
 
