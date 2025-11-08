@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.68.0",
     "axios": "^1.13.2",
     "elevenlabs": "^1.59.0",
     "react": "^19.1.1",
