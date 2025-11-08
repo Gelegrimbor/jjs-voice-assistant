@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Anthropic from '@anthropic-ai/sdk';
 import './App.css';
 
@@ -16,20 +16,49 @@ interface SpeechRecognitionErrorEvent {
   error: string;
 }
 
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+interface Voice {
+  id: string;
+  name: string;
+}
+
 function App() {
   const [inputText, setInputText] = useState('');
-  const [conversation, setConversation] = useState<Array<{ role: string, content: string }>>([]);
+  const [conversation, setConversation] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [selectedVoice, setSelectedVoice] = useState('pNInz6obpgDQGcFmaJgB'); // Default: Adam
+  const [volume, setVolume] = useState(1.0); // Default: 100%
   const recognitionRef = useRef<any>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
-  // Voice input
+  // Available voices from ElevenLabs
+  const voices: Voice[] = [
+    { id: 'pNInz6obpgDQGcFmaJgB', name: 'Adam (Male)' },
+    { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Rachel (Female)' },
+    { id: 'IKne3meq5aSn9XLyUdCD', name: 'Charlie (Male)' },
+    { id: 'XB0fDUnXU5powFXDhCwa', name: 'Charlotte (Female)' },
+    { id: 'cgSgspJ2msm6clMCkdW9', name: 'Jessica (Female)' },
+    { id: 'iP95p4xoKVk53GoZ742B', name: 'Chris (Male)' },
+  ];
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [conversation, isLoading]);
+
   const startListening = () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
-      alert('Your browser does not support speech recognition. Try Chrome!');
+      alert('Your browser does not support speech recognition. Please use Chrome!');
       return;
     }
 
@@ -40,15 +69,12 @@ function App() {
 
     recognition.onstart = () => {
       setIsListening(true);
-      console.log('Listening...');
     };
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       const transcript = event.results[0][0].transcript;
-      console.log('You said:', transcript);
       setInputText(transcript);
       setIsListening(false);
-      // Automatically send to AI after voice input
       handleSendMessage(transcript);
     };
 
@@ -65,15 +91,13 @@ function App() {
     recognition.start();
   };
 
-  // Send message to Claude AI
   const handleSendMessage = async (messageText?: string) => {
     const textToSend = messageText || inputText;
     if (!textToSend.trim()) return;
 
     setIsLoading(true);
 
-    // Add user message to conversation
-    const newConversation = [...conversation, { role: 'user', content: textToSend }];
+    const newConversation: Message[] = [...conversation, { role: 'user', content: textToSend }];
     setConversation(newConversation);
     setInputText('');
 
@@ -82,44 +106,37 @@ function App() {
 
       const anthropic = new Anthropic({
         apiKey: anthropicApiKey,
-        dangerouslyAllowBrowser: true // Note: In production, API calls should be from backend
+        dangerouslyAllowBrowser: true
       });
 
       const message = await anthropic.messages.create({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 1024,
-        messages: newConversation.map(msg => ({
-          role: msg.role as 'user' | 'assistant',
-          content: msg.content
-        }))
+        messages: newConversation
       });
 
       const assistantResponse = message.content[0].type === 'text' ? message.content[0].text : '';
 
-      // Add assistant response to conversation
       setConversation([...newConversation, { role: 'assistant', content: assistantResponse }]);
 
-      // Speak the response
       await speakText(assistantResponse);
 
     } catch (error) {
       console.error('Claude API Error:', error);
-      alert('Failed to get AI response. Check console for details.');
+      alert('Failed to get AI response. Check your API key and console.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Text to speech
   const speakText = async (text: string) => {
     setIsSpeaking(true);
 
     try {
       const apiKey = import.meta.env.VITE_ELEVENLABS_API_KEY;
-      const voiceId = 'pNInz6obpgDQGcFmaJgB'; // Adam voice
 
       const response = await fetch(
-        `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
+        `https://api.elevenlabs.io/v1/text-to-speech/${selectedVoice}`,
         {
           method: 'POST',
           headers: {
@@ -139,122 +156,155 @@ function App() {
       );
 
       if (!response.ok) {
-        throw new Error(`API returned ${response.status}`);
+        throw new Error(`TTS API returned ${response.status}`);
       }
 
       const audioBlob = await response.blob();
       const audioUrl = URL.createObjectURL(audioBlob);
       const audio = new Audio(audioUrl);
+      audio.volume = volume; // Set volume
+
+      audio.onended = () => setIsSpeaking(false);
       await audio.play();
 
     } catch (error) {
       console.error('Speech Error:', error);
-    } finally {
       setIsSpeaking(false);
     }
   };
 
-  return (
-    <div className="App" style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
-      <h1>🤖 AI Voice Assistant</h1>
+  const clearConversation = () => {
+    if (conversation.length > 0 && window.confirm('Are you sure you want to clear the conversation?')) {
+      setConversation([]);
+    }
+  };
 
-      {/* Conversation History */}
-      <div style={{
-        border: '1px solid #ccc',
-        borderRadius: '8px',
-        padding: '15px',
-        marginBottom: '20px',
-        minHeight: '300px',
-        maxHeight: '400px',
-        overflowY: 'auto',
-        backgroundColor: '#f9f9f9'
-      }}>
-        {conversation.length === 0 ? (
-          <p style={{ color: '#999', textAlign: 'center' }}>
-            Click the microphone and start talking!
-          </p>
-        ) : (
-          conversation.map((msg, index) => (
-            <div
-              key={index}
-              style={{
-                marginBottom: '15px',
-                textAlign: msg.role === 'user' ? 'right' : 'left'
-              }}
+  const getVoiceButtonClass = () => {
+    let className = 'voice-button';
+    if (isListening) className += ' listening';
+    if (isSpeaking) className += ' speaking';
+    return className;
+  };
+
+  const getVoiceButtonText = () => {
+    if (isListening) return '🎤 Listening...';
+    if (isSpeaking) return '🔊 Speaking...';
+    return '🎤 Talk to AI';
+  };
+
+  return (
+    <div className="App">
+      <div className="content-wrapper">
+        <div className="header">
+          <h1>🤖 AI Voice Assistant</h1>
+          <p>Powered by Claude AI & ElevenLabs</p>
+        </div>
+
+        {/* Settings Panel */}
+        <div className="settings-panel">
+          <div className="setting-group">
+            <label htmlFor="voice-select">🎙️ Voice:</label>
+            <select
+              id="voice-select"
+              className="voice-select"
+              value={selectedVoice}
+              onChange={(e) => setSelectedVoice(e.target.value)}
+              disabled={isLoading || isListening || isSpeaking}
             >
-              <div style={{
-                display: 'inline-block',
-                padding: '10px 15px',
-                borderRadius: '15px',
-                backgroundColor: msg.role === 'user' ? '#2196F3' : '#4CAF50',
-                color: 'white',
-                maxWidth: '70%',
-                textAlign: 'left'
-              }}>
-                <strong>{msg.role === 'user' ? 'You' : 'AI'}:</strong> {msg.content}
+              {voices.map((voice) => (
+                <option key={voice.id} value={voice.id}>
+                  {voice.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="setting-group">
+            <label htmlFor="volume-slider">🔊 Volume: {Math.round(volume * 100)}%</label>
+            <input
+              id="volume-slider"
+              type="range"
+              className="volume-slider"
+              min="0"
+              max="1"
+              step="0.1"
+              value={volume}
+              onChange={(e) => setVolume(parseFloat(e.target.value))}
+              disabled={isLoading || isListening || isSpeaking}
+            />
+          </div>
+
+          <button
+            className="clear-button"
+            onClick={clearConversation}
+            disabled={conversation.length === 0 || isLoading || isListening || isSpeaking}
+          >
+            🗑️ Clear Chat
+          </button>
+        </div>
+
+        <div className="chat-container" ref={chatContainerRef}>
+          {conversation.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-state-icon">💬</div>
+              <p style={{ fontSize: '1.2rem', marginBottom: '10px' }}>
+                Start a conversation!
+              </p>
+              <p style={{ fontSize: '0.9rem' }}>
+                Click the microphone button or type a message
+              </p>
+            </div>
+          ) : (
+            conversation.map((msg, index) => (
+              <div key={index} className={`message ${msg.role}`}>
+                <div className="message-bubble">
+                  <span className="message-label">
+                    {msg.role === 'user' ? 'You' : 'AI Assistant'}
+                  </span>
+                  <div className="message-content">{msg.content}</div>
+                </div>
+              </div>
+            ))
+          )}
+          {isLoading && (
+            <div className="loading-indicator">
+              <div className="loading-dots">
+                AI is thinking<span>.</span><span>.</span><span>.</span>
               </div>
             </div>
-          ))
-        )}
-        {isLoading && (
-          <div style={{ textAlign: 'center', color: '#999' }}>
-            <em>AI is thinking...</em>
+          )}
+        </div>
+
+        <div className="input-container">
+          <div className="input-row">
+            <input
+              type="text"
+              className="text-input"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+              placeholder="Type a message or use voice..."
+              disabled={isLoading || isListening}
+            />
+            <button
+              className="send-button"
+              onClick={() => handleSendMessage()}
+              disabled={isLoading || isListening || !inputText.trim()}
+            >
+              Send ✈️
+            </button>
           </div>
-        )}
-      </div>
 
-      {/* Input Area */}
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-        <input
-          type="text"
-          value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-          placeholder="Type a message or use voice..."
-          style={{
-            flex: 1,
-            padding: '12px',
-            fontSize: '16px',
-            borderRadius: '5px',
-            border: '1px solid #ccc'
-          }}
-          disabled={isLoading || isListening}
-        />
-        <button
-          onClick={() => handleSendMessage()}
-          disabled={isLoading || isListening || !inputText.trim()}
-          style={{
-            padding: '12px 25px',
-            fontSize: '16px',
-            cursor: (isLoading || isListening || !inputText.trim()) ? 'not-allowed' : 'pointer',
-            backgroundColor: (isLoading || !inputText.trim()) ? '#ccc' : '#2196F3',
-            color: 'white',
-            border: 'none',
-            borderRadius: '5px'
-          }}
-        >
-          Send
-        </button>
-      </div>
-
-      {/* Voice Button */}
-      <div style={{ textAlign: 'center' }}>
-        <button
-          onClick={startListening}
-          disabled={isListening || isLoading || isSpeaking}
-          style={{
-            padding: '20px 40px',
-            fontSize: '20px',
-            cursor: (isListening || isLoading || isSpeaking) ? 'not-allowed' : 'pointer',
-            backgroundColor: isListening ? '#ff9800' : '#4CAF50',
-            color: 'white',
-            border: 'none',
-            borderRadius: '50px',
-            boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-          }}
-        >
-          {isListening ? '🎤 Listening...' : isSpeaking ? '🔊 Speaking...' : '🎤 Talk to AI'}
-        </button>
+          <div className="voice-button-container">
+            <button
+              className={getVoiceButtonClass()}
+              onClick={startListening}
+              disabled={isListening || isLoading || isSpeaking}
+            >
+              {getVoiceButtonText()}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
